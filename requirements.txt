@@ -1,0 +1,10 @@
+numpy
+pandas
+astropy
+sparclclient
+scipy
+matplotlib
+astroquery
+emcee
+h5py
+getdist

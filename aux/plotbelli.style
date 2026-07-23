@@ -1,0 +1,30 @@
+font.size: 16
+
+
+font.family     : serif
+font.serif      : Libertinus Serif
+font.sans-serif     : Libertinus Sans
+
+mathtext.fontset : custom
+mathtext.cal : Libertinus Math
+mathtext.rm  : Libertinus Math
+mathtext.tt  : monospace
+mathtext.it  : Libertinus Math
+mathtext.bf  : Libertinus Math
+mathtext.sf  : serif
+
+
+lines.linewidth : 1.
+axes.linewidth : 1.5
+axes.labelsize : 18
+
+xtick.top : True
+xtick.labelsize : 16
+xtick.direction : in
+xtick.major.size : 5
+xtick.major.width : 1.5
+ytick.right : True
+ytick.labelsize : 16
+ytick.direction : in
+ytick.major.size : 5
+ytick.major.width : 1.5
