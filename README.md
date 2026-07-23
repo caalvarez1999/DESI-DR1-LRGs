@@ -174,17 +174,6 @@ _<COSMOLOGY>_<priors>`, overridable with `--name`); the raw `.h5` chain and
 the un-burned `.txt` are deleted right after. A chain whose `_burnin.txt`
 already exists is skipped unless `--overwrite` is given.
 
-This was cross-checked against the real historical data: fitting
-`--vd-bins 200225 225250 250280 280320 320355 --archaeology ALVAREZ
---cosmology PLANCK --target-sn 150 --priors wide` against
-`TABLAS/modelled/` (the same 5-group, SN150, PLANCK/ALVAREZ, wide-priors
-configuration `SUPPLEMENTARY/cosmographic/baseline_burnin.txt` in the
-original COROLARIO3 project came from) reproduces its posterior medians
-closely (e.g. `Hz0` 96.2 vs. 96.7 km/s/Mpc, `qz0` 1.22 vs. 1.32, `jz0` 0.13
-vs. 0.09, ages within ~0.1 Gyr) -- differences consistent with normal
-emcee run-to-run stochasticity (different random seed, no fixed initial
-walker positions), not a porting bug.
-
 ## Layout
 
 ```
