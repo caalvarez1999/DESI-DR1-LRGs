@@ -17,10 +17,7 @@ Thomas, Maraston & Johansson (2011) SSP model to each stack's indices to get
 an age/metallicity/[alpha/Fe] posterior -- and the cosmographic fit (30):
 MCMC-fitting a Taylor expansion of t(z) across several vd groups' ages to
 get H(z0)/q(z0)/j(z0), the actual cosmochronometric measurement this whole
-pipeline is built towards. (Stages 05-09, 13-19 and 22-29 don't exist in
-this repo -- the numbering follows the original ARTICLE3 scripts this
-pipeline is a clean rewrite of, and those numbers were earlier exploratory
-steps that didn't survive into the final pipeline.)
+pipeline is built towards.
 
 ## Pipeline
 
