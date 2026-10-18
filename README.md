@@ -125,7 +125,7 @@ S/N (`desicc/stacking.py`). This stage is long; it saves a checkpoint
 interrupted.
 
 Stage 11 collects the stack files of the group
-(`spectra/stacks/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/SN<target>_stack<NNNN>.fits`)
+(`spectra/stacks/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/stackedDESI_vd<bin>_SN<sn>_<COSMOLOGY>_<ARCHAEOLOGY>_stack<NNNN>.fits`)
 into a single summary table,
 `TABLAS/STACKed/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/stackedDESI_vd<bin>_SN<sn>_<ARCHAEOLOGY>_<COSMOLOGY>.fits`,
 where `<sn>` is the target S/N zero-padded to three digits (e.g. `050`, `150`).
@@ -199,7 +199,7 @@ TABLAS/PARENT/           location of the PARENT0-4 tables (available on Zenodo)
 TABLAS/STACKed/          stack summary tables (stages 11-12), one folder per group
 TABLAS/modelled/         TMJ posterior tables (stage 21), one folder per group
 spectra/singlegalaxies/  per-galaxy FITS files (stage 03), one folder per velocity-dispersion bin (not included)
-spectra/stacks/          per-stack FITS files (stage 10), one folder per group (not included)
+spectra/stacks/          per-stack FITS files (stage 10), one folder per group (only the baseline stacks are included)
 chains/TMJ/              MCMC chains of stage 20, one folder per group (not included)
 chains/cosmographic/     MCMC chains of stage 30 (not included)
 stackstosinglegalaxies.fits  list of the DESI targets included in each baseline stack
@@ -261,16 +261,32 @@ the working directory.
   They exceed the GitHub file-size limit and are available on Zenodo:
   [doi:10.5281/zenodo.21535100](https://doi.org/10.5281/zenodo.21535100).
   To use them with the pipeline, place them in `TABLAS/PARENT/`.
-- **Per-galaxy spectra** (`spectra/singlegalaxies/`), per-stack spectra
-  (`spectra/stacks/`) and **MCMC chains** (`chains/`). They are too large or
-  too numerous to be tracked, and they can be regenerated with the pipeline;
-  only the folder structure is kept (see `spectra/README.md`). The individual
-  spectra are publicly available from DESI DR1 through SPARCL.
+- **Per-galaxy spectra** (`spectra/singlegalaxies/`), the stacked spectra of
+  the non-baseline configurations (`spectra/stacks/`) and the **MCMC chains of
+  the TMJ fits** (`chains/TMJ/`). They are too large or too numerous to be
+  tracked, and they can be regenerated with the pipeline; only the folder
+  structure is kept (see `spectra/README.md`). The individual spectra are
+  publicly available from DESI DR1 through SPARCL.
 - **SPARCL query cache** (`sparcl_ids_cache.fits`), which only speeds up
   re-runs of stage 01.
 
 ### Included in this repository
 
+- **`spectra/stacks/vd<bin>/ALVAREZ/PLANCK/`**: the stacked spectra of the
+  baseline configuration (S/N = 150, `ALVAREZ`, `PLANCK`) for each
+  velocity-dispersion bin (`vd200225`, `vd225250`, ...), one FITS file per
+  stack (`stackedDESI_vd<bin>_SN150_PLANCK_ALVAREZ_stack<NNNN>.fits`). Each
+  file contains three tables:
+  - `METADATA`: number of galaxies (`ngals`), mean velocity dispersion and
+    redshift with their dispersions (`vd`, `dvd`, `z1`, `dz1`), median
+    spectral S/N (`snmedian`) and the DESI `targetids` of the galaxies that
+    compose the stack;
+  - `SPECTRUM`: the rest-frame stacked spectrum, sampled from 3600 to 6700 Å
+    in steps of 0.1 Å (`W`), with the normalised flux (`F`), its uncertainty
+    (`dF`) and two auxiliary columns (`S`, `mask`);
+  - `PYLICK`: the 33 spectral indices measured on the stacked spectrum and
+    their uncertainties, before the velocity-dispersion correction (the
+    corrected values are given in the stage-12 tables of `TABLAS/STACKed/`).
 - **`TABLAS/STACKed/`**: stack summary tables (stages 11–12) for all the
   configurations explored in the paper: 6 velocity-dispersion bins × 3
   age–σ relations × 2 cosmologies × 11 target S/N levels (50–150 in steps of
