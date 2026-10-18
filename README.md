@@ -1,43 +1,63 @@
-# DESI Cosmic Chronometers pipeline
+# DESI-DR1 Cosmic Chronometers pipeline
 
-Builds the working galaxy sample used in the Cosmic Chronometers analysis
-(ARTICLE3): starting from the DESI fastspecfit ("fastspec-iron") value-added
-catalog, select LRGs with a well-measured velocity dispersion in
-`VD_MIN < vd < VD_MAX` (200-400 km/s, `desicc/config.py`), fetch their
-spectra from [SPARCL](https://astrosparcl.datalab.noirlab.edu/), and measure
-Lick/D4000 spectral indices on each one.
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21535100.svg)](https://doi.org/10.5281/zenodo.21535100)
 
-This covers the catalog-to-spectra stages (00-04) -- building the sample,
-fetching spectra, measuring Lick indices per galaxy and folding those into a
-single table, and applying the velocity-dispersion correction -- the
-stacking stages (10-12): building S/N-targeted composite spectra per
-vd/archaeology/cosmology group, summarizing them, and CVD-correcting the
-summary -- the TMJ stellar-population fit stages (20-21): MCMC-fitting the
-Thomas, Maraston & Johansson (2011) SSP model to each stack's indices to get
-an age/metallicity/[alpha/Fe] posterior -- and the cosmographic fit (30):
-MCMC-fitting a Taylor expansion of t(z) across several vd groups' ages to
-get H(z0)/q(z0)/j(z0), the actual cosmochronometric measurement this whole
-pipeline is built towards.
+This repository contains the pipeline used in *Cosmography with DESI-DR1 Cosmic
+Chronometers: Direct H(z) measurements from Luminous Red Galaxy ages*
+(Álvarez et al. 2026). Starting from the DESI DR1 FastSpecFit value-added
+catalogue (`fastspec-iron`), it:
+
+1. selects Luminous Red Galaxies (LRGs) with a reliable stellar velocity
+   dispersion in the range 200 < σ < 400 km/s;
+2. retrieves their spectra from [SPARCL](https://astrosparcl.datalab.noirlab.edu/)
+   and measures Lick/D4000 spectral indices on each of them;
+3. builds stacked spectra at a target S/N for each velocity-dispersion group;
+4. fits the Thomas, Maraston & Johansson (2011; TMJ) simple stellar population
+   model to the indices of each stack to obtain its age, metallicity and
+   [α/Fe];
+5. fits a pivotal-redshift cosmographic expansion of the age–redshift relation,
+   t(z), jointly to all the velocity-dispersion groups to constrain
+   H(z₀), q(z₀) and j(z₀).
+
+The large catalogue-level tables (`PARENT0`–`PARENT4.fits`) are available on
+Zenodo: [doi:10.5281/zenodo.21535100](https://doi.org/10.5281/zenodo.21535100).
+
+## Citation
+
+If you use this code or the associated data products, please cite:
+
+> Álvarez, C. A., Cueli, M. M., Haridasu, B. S., et al. 2026, *Cosmography
+> with DESI-DR1 Cosmic Chronometers: Direct H(z) measurements from Luminous
+> Red Galaxy ages*, A&A (submitted)
+
+and, for the `PARENT` tables, the Zenodo record
+[doi:10.5281/zenodo.21535100](https://doi.org/10.5281/zenodo.21535100).
+
+This work uses DESI DR1 data; please also follow the DESI data release
+acknowledgement and citation guidelines if you use them.
 
 ## Pipeline
 
-Each stage is named after the `PARENTX.fits` it produces.
+Each catalogue-level stage (00–04) is named after the `PARENTX.fits` table it
+produces.
 
-| stage | script | does |
+| stage | script | description |
 |---|---|---|
-| 00 | `pipeline/00_merge_catalogs.py` | Apply the sample selection to the raw catalog, write `PARENT0.fits` |
-| 01 | `pipeline/01_query_sparcl_ids.py` | Look up each target's `specid`/`sparclid`/`DR` on SPARCL, write `PARENT1.fits` |
-| 02 | `pipeline/02_select_downloadable.py` | Drop targets SPARCL couldn't identify, write `PARENT2.fits` |
-| 03 | `pipeline/03_download_spectra.py` | Download spectra for one velocity-dispersion bin, measure Lick indices, write one FITS per galaxy, and fold the result into `PARENT3.fits` |
-| 04 | `pipeline/04_cvd_correction.py` | Apply the velocity-dispersion correction to `PARENT3.fits`, write `PARENT4.fits` |
-| 10 | `pipeline/10_stackmaker.py` | For one vd/archaeology/cosmology group, select eligible galaxies from `PARENT4.fits` and build S/N-targeted stacks, one FITS per stack |
-| 11 | `pipeline/11_stacksummary.py` | Collect that group's stack FITS files into one summary table (`TABLAS/STACKed/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/stackedDESI_....fits`) |
+| 00 | `pipeline/00_merge_catalogs.py` | Apply the sample selection to the FastSpecFit catalogue and write `PARENT0.fits` |
+| 01 | `pipeline/01_query_sparcl_ids.py` | Retrieve the SPARCL identifiers (`specid`, `sparclid`, `DR`) of each target and write `PARENT1.fits` |
+| 02 | `pipeline/02_select_downloadable.py` | Remove the targets not found in SPARCL and write `PARENT2.fits` |
+| 03 | `pipeline/03_download_spectra.py` | Download the spectra of one velocity-dispersion bin, measure their Lick indices, write one FITS file per galaxy and add the results to `PARENT3.fits` |
+| 04 | `pipeline/04_cvd_correction.py` | Apply the velocity-dispersion correction to `PARENT3.fits` and write `PARENT4.fits` |
+| 10 | `pipeline/10_stackmaker.py` | Select the eligible galaxies of one group from `PARENT4.fits` and build stacks at the target S/N, one FITS file per stack |
+| 11 | `pipeline/11_stacksummary.py` | Collect the stacks of one group into a summary table |
 | 12 | `pipeline/12_stackcvd.py` | Apply the velocity-dispersion correction to that summary table |
-| 20 | `pipeline/20_SPSfitTMJ.py` | MCMC-fit the TMJ SSP model to every fittable stack, write a burned-in chain per stack |
-| 21 | `pipeline/21_posteriorsTMJ.py` | Collect that group's chains into one posteriors table (`TABLAS/modelled/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/posteriorsDESI_TMJ_....fits`) |
-| 30 | `pipeline/30_cosmographic.py` | MCMC-fit the Taylor-expansion t(z) model jointly across several vd groups' posteriors tables, write a burned-in chain |
+| 20 | `pipeline/20_SPSfitTMJ.py` | Fit the TMJ model to every stack with an MCMC sampler and write one chain per stack |
+| 21 | `pipeline/21_posteriorsTMJ.py` | Collect the chains of one group into a table of posterior summaries |
+| 30 | `pipeline/30_cosmographic.py` | Fit the cosmographic t(z) model jointly to several groups and write the MCMC chain |
 
-Run them in order from the repo root:
+Run the stages in order from the repository root. For the baseline
+configuration of the paper (S/N = 150, age–σ relation of Álvarez et al. 2025,
+Planck cosmology):
 
 ```bash
 python3 pipeline/00_merge_catalogs.py
@@ -45,327 +65,228 @@ python3 pipeline/01_query_sparcl_ids.py
 python3 pipeline/02_select_downloadable.py
 python3 pipeline/03_download_spectra.py --vd-bin 200225 --existing review
 python3 pipeline/04_cvd_correction.py
-python3 pipeline/10_stackmaker.py --vd-bin 200225 --archaeology ALVAREZ --cosmology PLANCK --target-sn 100
-python3 pipeline/11_stacksummary.py --vd-bin 200225 --archaeology ALVAREZ --cosmology PLANCK --target-sn 100
-python3 pipeline/12_stackcvd.py --vd-bin 200225 --archaeology ALVAREZ --cosmology PLANCK --target-sn 100
-python3 pipeline/20_SPSfitTMJ.py --vd-bin 200225 --archaeology ALVAREZ --cosmology PLANCK --target-sn 100
-python3 pipeline/21_posteriorsTMJ.py --vd-bin 200225 --archaeology ALVAREZ --cosmology PLANCK --target-sn 100
+python3 pipeline/10_stackmaker.py   --vd-bin 200225 --archaeology ALVAREZ --cosmology PLANCK --target-sn 150
+python3 pipeline/11_stacksummary.py --vd-bin 200225 --archaeology ALVAREZ --cosmology PLANCK --target-sn 150
+python3 pipeline/12_stackcvd.py     --vd-bin 200225 --archaeology ALVAREZ --cosmology PLANCK --target-sn 150
+python3 pipeline/20_SPSfitTMJ.py    --vd-bin 200225 --archaeology ALVAREZ --cosmology PLANCK --target-sn 150
+python3 pipeline/21_posteriorsTMJ.py --vd-bin 200225 --archaeology ALVAREZ --cosmology PLANCK --target-sn 150
 python3 pipeline/30_cosmographic.py --vd-bins 200225 225250 250280 280320 320355 --archaeology ALVAREZ --cosmology PLANCK --target-sn 150 --priors wide
 ```
 
-Stage 03 also has an interactive twin, `03_download_spectra_input.py`, which
-asks for the vd bin and the existing-file policy via prompts instead of
-flags -- same underlying logic (`desicc/download.py`), just a different
-front door.
+Stages 03 and 10–21 are run once per velocity-dispersion bin
+(`200225`, `225250`, `250280`, `280320`, `320355`, `355400`).
 
-`--existing` (or the equivalent prompt) controls what happens to spectra
-already on disk for the requested bin:
+### Catalogue and spectra (00–04)
 
-- `review` (default): re-download only files that are missing or fail a
-  structural check (`desicc.fits_io.is_valid_galaxy_fits`) -- the normal
-  "top up the sample" mode.
-- `replace`: re-download everything in the bin regardless of what's there.
-- `skip`: only fetch files that don't exist at all, no content check.
+Stage 03 has an interactive version, `03_download_spectra_input.py`, which
+asks for the velocity-dispersion bin and the policy for existing files instead
+of reading them from flags; both use the same code (`desicc/download.py`).
 
-Stage 03 is meant to be re-run once per vd bin: after downloading and
-measuring, it folds that bin's per-galaxy FITS files into `PARENT3.fits`
-(seeded from `PARENT2.fits` the first time it doesn't exist yet, then
-updated in place across runs). Rows already marked `done=1` in `PYLICK` are
-left untouched, so re-running a bin only fills in what's new.
+The `--existing` option controls how spectra already on disk are treated:
 
-Stage 04 is a full, stateless recompute: it always regenerates
-`PARENT4.fits` from whatever is currently in `PARENT3.fits`, so it's
-safe to re-run any time, e.g. after stage 03 has filled in more bins.
+- `review` (default): re-download only the files that are missing or fail a
+  structural check (`desicc.fits_io.is_valid_galaxy_fits`);
+- `replace`: re-download all the files of the bin;
+- `skip`: download only the files that do not exist, without checking the
+  existing ones.
 
-### Stacking (10-12)
+After downloading and measuring the spectra of a bin, stage 03 adds the
+results to `PARENT3.fits` (created from `PARENT2.fits` on the first run and
+updated in place afterwards). Rows already marked as `done=1` in the `PYLICK`
+table are left untouched, so the stage can be resumed or re-run bin by bin.
 
-A "group" is a choice of vd bin, `--archaeology` (the scaling relation
-between velocity dispersion and stellar age: `ALVAREZ`/`JOHANSSON`/`THOMAS`),
-`--cosmology` (age -> redshift: `PLANCK`/`RIESS`), and `--target-sn` (the
-S/N each stack should reach). All three stages take the same four flags, and
-operate on one group at a time.
+Stage 04 always regenerates `PARENT4.fits` from the current content of
+`PARENT3.fits`, so it can be re-run at any time.
 
-Stage 10 first works out, from `archaeology/limitesarchaeologyTMJ_<COSMOLOGY>
-_<ARCHAEOLOGY>.npy`, the maximum redshift a galaxy in this vd bin can have
-and still plausibly be old enough to matter for this archaeology+cosmology
-(`desicc/stack_selection.load_zcut`) -- i.e. how far back this vd group lets
-you look. It then selects galaxies from `PARENT4.fits` within that redshift
-and vd range, with a finished good-quality measurement (`done=1`,
-`qual>=0.5`), no significant nebular emission, and a CaII H/K ratio under 1.2
-(`desicc.stack_selection.select_for_stacking` -- ported from
-`6_FINALSELECTION_of_singlegalaxies_by_groups.py`), sorts them by redshift,
-and consumes them into consecutive stacks that each reach `--target-sn`
-(`desicc/stacking.py` -- ported from `7_STACKINGfull.py`). This is a
-long-running process -- it checkpoints to a `SN<target>_resume.json` file in
-the output directory after every stack, and picks the checkpoint back up if
-interrupted and re-run.
+### Stacking (10–12)
 
-Stage 11 then collects that group's stack FITS files (`spectra/stacks/
-vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/SN<target>_stack<NNNN>.fits`) into a single
-summary table, `TABLAS/STACKed/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/
-stackedDESI_vd<bin>_SN<sn>_<ARCHAEOLOGY>_<COSMOLOGY>.fits` (`<sn>` is
-`--target-sn` zero-padded to 3 digits, e.g. `100` -> `100`, `50` -> `050`) --
-the stacked-spectra equivalent of `PARENT3.fits`: one row per stack in
-METADATA (`stack`, `ngals`, `vd`/`dvd`, `z1`/`dz1`, `snmedian` -- properties
-of the stack itself, not present in any individual-galaxy file) and PYLICK
-(`stack`, replicated from METADATA as the row identifier -- same convention
-as `targetid` in the per-galaxy PYLICK tables -- plus the indices measured
-on that stack's composite spectrum). Stage 12 applies the velocity-dispersion
-correction to that summary table, the same way stage 04 does for
-`PARENT3.fits`, using each stack's own mean vd, and writes the
-`..._CVD.fits` sibling in the same directory -- a full, stateless recompute,
-safe to re-run any time stage 11 has picked up more stacks.
+A *group* is defined by a velocity-dispersion bin and three further choices:
 
-### TMJ fit (20-21)
+- `--archaeology`: the age–velocity dispersion relation used for the
+  redshift cut (`ALVAREZ`, `JOHANSSON` or `THOMAS`, after Álvarez et al. 2025,
+  Johansson et al. 2012 and Thomas et al. 2010);
+- `--cosmology`: the cosmology used to convert ages into redshifts (`PLANCK`
+  or `RIESS`);
+- `--target-sn`: the spectral S/N that each stack must reach.
 
-Stages 20-21 take the same `--vd-bin`/`--archaeology`/`--cosmology`/
-`--target-sn` group flags as stages 10-12, reading stage 12's CVD-corrected
-summary table, plus `--grid` (default `custom250924b`, the only TMJ model
-grid vendored in `aux/TMJ/` -- see Vendored code below).
+Stages 10–12 take the same four flags and process one group at a time.
 
-Stage 20 selects the stacks with >=1 galaxy and finite values/errors on
-every index in `TMJ_FIT_INDICES` (`desicc/config.py` -- a fixed set of 13
-Lick indices from the original analysis, unrelated to the `--archaeology`
-scaling-relation choice despite a similar name upstream), and for each one
-MCMC-fits age (`t`)/metallicity (`Z`)/`[alpha/Fe]` (`afe`) against the model
-grid (`desicc/tmj.py`, `aux/mcmc_tmj.py` -- ported from
-`STACKING/MCMC2_MCMC.py`), then cuts the burn-in
-(`aux/burnin.py` -- ported from `STACKING/MCMC3_burnin_maker.py`). Each
-stack's burned-in chain is written to `chains/TMJ/vd<bin>/<ARCHAEOLOGY>/
-<COSMOLOGY>/chainDESIFULLTMJ<grid>_stack<NNNN>_vd<bin>_SN<sn>_<ARCHAEOLOGY>
-_<COSMOLOGY>_burnin.txt` (`<NNNN>` is the stack's own number, read back from
-its `stack` column, e.g. `..._stack0001.fits` -> `0001`); the much larger
-raw `.h5` chain is deleted right after. This is a long-running process (one
-MCMC run per stack) -- a stack whose `_burnin.txt` already exists is skipped,
-so it's safe to re-run any time or after being interrupted.
+Stage 10 first reads the maximum redshift allowed for the bin, given the
+chosen relation and cosmology, from
+`archaeology/limitesarchaeologyTMJ_<COSMOLOGY>_<ARCHAEOLOGY>.npy`
+(the *archaeological coherence cut* of the paper; `desicc/stack_selection.load_zcut`).
+It then selects the galaxies of `PARENT4.fits` within that redshift and
+velocity-dispersion range that have a valid measurement (`done=1`,
+`qual>=0.5`), no significant nebular emission and a CaII H/K ratio below 1.2
+(`desicc.stack_selection.select_for_stacking`). The selected galaxies are
+sorted by redshift and combined into consecutive stacks that reach the target
+S/N (`desicc/stacking.py`). This stage is long; it saves a checkpoint
+(`SN<target>_resume.json`) after each stack and resumes from it if
+interrupted.
 
-Stage 21 then collects that group's chains into a single posteriors table,
-`TABLAS/modelled/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/posteriorsDESI_TMJ_<grid>
-_vd<bin>_SN<sn>_<ARCHAEOLOGY>_<COSMOLOGY>.fits` -- the same METADATA+PYLICK
-structure as stage 11/12's table, plus a TMJ HDU with one row per stack:
-`stack`, then for each of `t`/`Z`/`afe` the KDE mode plus 16th/84th-percentile
-spread (`<par>`, `d<par>_low`, `d<par>_up`, `d<par>`, `<par>_npeaks` --
-`desicc/tmj.py`, `aux/posteriors.py` -- ported from `MYLIBS/posteriors.py`),
-and `valid` (1 if the stack was fittable and its chain exists, 0 -- with the
-rest of the row NaN -- otherwise). A full, stateless recompute, safe to
-re-run any time stage 20 has produced more chains.
+Stage 11 collects the stack files of the group
+(`spectra/stacks/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/SN<target>_stack<NNNN>.fits`)
+into a single summary table,
+`TABLAS/STACKed/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/stackedDESI_vd<bin>_SN<sn>_<ARCHAEOLOGY>_<COSMOLOGY>.fits`,
+where `<sn>` is the target S/N zero-padded to three digits (e.g. `050`, `150`).
+Its `METADATA` table contains one row per stack (`stack`, `ngals`, `vd`/`dvd`,
+`z1`/`dz1`, `snmedian`), and its `PYLICK` table contains the indices measured
+on each stacked spectrum, with `stack` as row identifier. Stage 12 applies the
+velocity-dispersion correction to this table, using the mean velocity
+dispersion of each stack, and writes the corresponding `_CVD.fits` file.
+
+### TMJ fit (20–21)
+
+Stages 20–21 take the same group flags as stages 10–12 and read the
+corrected summary table produced by stage 12. The `--grid` option selects the
+TMJ model grid (default and only grid included: `custom250924b`).
+
+Stage 20 selects the stacks with at least one galaxy and finite values and
+uncertainties for all the indices used in the fit (`TMJ_FIT_INDICES` in
+`desicc/config.py`, the 13 Lick indices of the paper), and fits the age (`t`),
+metallicity (`Z`) and [α/Fe] (`afe`) of each one with an MCMC sampler
+(`desicc/tmj.py`, `aux/mcmc_tmj.py`). The burn-in is then removed
+(`aux/burnin.py`), and the chain of each stack is written to
+`chains/TMJ/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/chainDESIFULLTMJ<grid>_stack<NNNN>_vd<bin>_SN<sn>_<ARCHAEOLOGY>_<COSMOLOGY>_burnin.txt`.
+Stacks whose chain already exists are skipped, so the stage can be resumed.
+
+Stage 21 collects the chains of the group into a single table,
+`TABLAS/modelled/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/posteriorsDESI_TMJ_<grid>_vd<bin>_SN<sn>_<ARCHAEOLOGY>_<COSMOLOGY>.fits`,
+with the same `METADATA` and `PYLICK` tables as stages 11–12 plus a `TMJ`
+table with one row per stack. For each of `t`, `Z` and `afe`, it gives the
+mode of the posterior and its 16th–84th percentile range (`<par>`,
+`d<par>_low`, `d<par>_up`, `d<par>`, `<par>_npeaks`; `desicc/tmj.py`,
+`aux/posteriors.py`), and a `valid` flag (1 if the stack was fitted).
 
 ### Cosmographic fit (30)
 
-Stage 30 takes `--vd-bins` (one or more groups, e.g. `200225 225250 250280
-280320 320355`), `--archaeology`/`--cosmology`/`--target-sn`/`--grid` (same
-meaning as stages 20-21, used to find each group's stage 21 table), and
-`--priors` (`narrow` or `wide` -- the prior ranges on `Hz0`/`qz0`/`jz0`,
-`aux/taylor_tz.py`/`aux/taylor_tz_wide.py`).
+Stage 30 takes `--vd-bins` (one or more groups, e.g.
+`200225 225250 250280 280320 320355`), the `--archaeology`, `--cosmology`,
+`--target-sn` and `--grid` options of stages 20–21 (used to locate the
+corresponding tables), and `--priors` (`narrow` or `wide`), which sets the
+prior ranges on `Hz0`, `qz0` and `jz0` (`aux/taylor_tz.py`,
+`aux/taylor_tz_wide.py`).
 
-It reads and stacks the selected groups' TMJ posteriors tables, keeps only
-reliable rows (`valid`, `z1/dz1 > 50`, `dz1 < 0.01`, `t/dt > 5`, `dt < 1` --
-`desicc.cosmographic.select_fittable`, ported from
-`13_tz_cosmographic.py`'s `RESRES`), and MCMC-fits a `--order`-th order
-Taylor expansion of t(z) around `--z0` (default: the sample's median z1)
-jointly across every selected group -- one shared `Hz0`/`qz0`/`jz0` plus one
-`age<vd-bin>` nuisance parameter per group (`desicc/cosmographic.py`,
-`aux/mcmc_cosmographic.py` -- ported from `13_tz_cosmographic.py` +
-`aux13_MCMC.py`), then cuts the burn-in (`aux/burnin_cosmographic.py` --
-ported from `aux13_burnin_maker.py`). The burned-in chain is written to
-`chains/cosmographic/<name>_burnin.txt` (`<name>` defaults to
-`cosmographicTMJ<grid>_vd<bins->joined->with->dashes>_SN<sn>_<ARCHAEOLOGY>
-_<COSMOLOGY>_<priors>`, overridable with `--name`); the raw `.h5` chain and
-the un-burned `.txt` are deleted right after. A chain whose `_burnin.txt`
-already exists is skipped unless `--overwrite` is given.
+It combines the posterior tables of the selected groups and keeps only the
+stacks that pass the quality flags of the paper (`valid`, `z1/dz1 > 50`,
+`dz1 < 0.01`, `t/dt > 5`, `dt < 1` Gyr; `desicc.cosmographic.select_fittable`).
+It then fits an expansion of t(z) of order `--order` around `--z0` (by
+default, the median redshift of the selected stacks) jointly to all the
+groups, with common `Hz0`, `qz0` and `jz0` and one nuisance age parameter per
+group (`desicc/cosmographic.py`, `aux/mcmc_cosmographic.py`). After removing
+the burn-in (`aux/burnin_cosmographic.py`), the chain is written to
+`chains/cosmographic/<name>_burnin.txt`, where `<name>` defaults to
+`cosmographicTMJ<grid>_vd<bins>_SN<sn>_<ARCHAEOLOGY>_<COSMOLOGY>_<priors>` and
+can be changed with `--name`. Existing chains are not overwritten unless
+`--overwrite` is given.
 
-## Layout
+All stages also accept options to read from and write to custom locations
+(`--input`/`--output` for most stages; `--parent`, `--spectra-root` and
+`--parent-final` for stage 03; `--singlegalaxies-root`, `--stacks-root`,
+`--chains-root` and `--output` for stages 10–21; `--chains-root` and `--name`
+for stage 30).
+
+## Repository layout
 
 ```
-desicc/                    shared library code (config, SPARCL client, FITS I/O, Lick measurement, CVD correction, stacking)
-pipeline/                  the numbered entry-point scripts above
-aux/                       vendored Lick-index/CVD primitives and data this pipeline actually uses (see Vendored code below)
-pylick/                    vendored index-measurement package aux/ builds on
-archaeology/               archaeology+cosmology -> redshift-cut lookups stage 10 reads -- included (see Data & storage)
-tablasDESI/                where the raw fastspec-iron VAC would go -- not included (see Data & storage)
-TABLAS/PARENT/             PARENTX.fits summary tables -- included (see Data & storage)
-TABLAS/STACKed/             stage 11/12 stack summary tables, one subfolder per vd/archaeology/cosmology group -- included (see Data & storage)
-TABLAS/modelled/            stage 21 TMJ posteriors tables, one subfolder per vd/archaeology/cosmology group -- included (see Data & storage)
-spectra/singlegalaxies/    per-galaxy FITS files (stage 03), one subfolder per vd bin -- folder skeleton only, files not included
-spectra/stacks/             per-stack FITS files (stage 10), one subfolder per vd/archaeology/cosmology group -- folder skeleton only, files not included
-chains/TMJ/                 stage 20 MCMC chains, one subfolder per vd/archaeology/cosmology group -- folder skeleton only, files not included
-chains/cosmographic/        stage 30 MCMC chains -- folder skeleton only, files not included
-stackstosinglegalaxies.fits  stack -> targetids lookup for the baseline stacks -- included (see Data & storage)
+desicc/                  library code (configuration, SPARCL client, FITS I/O, Lick-index measurement, velocity-dispersion correction, stacking, fits)
+pipeline/                numbered scripts of each stage
+aux/                     auxiliary modules and data used by the pipeline (see Included third-party code and data)
+pylick/                  index-measurement package (see Included third-party code and data)
+archaeology/             redshift limits of the archaeological coherence cut, read by stage 10
+tablasDESI/              location of the FastSpecFit catalogue (not included)
+TABLAS/PARENT/           location of the PARENT0-4 tables (available on Zenodo)
+TABLAS/STACKed/          stack summary tables (stages 11-12), one folder per group
+TABLAS/modelled/         TMJ posterior tables (stage 21), one folder per group
+spectra/singlegalaxies/  per-galaxy FITS files (stage 03), one folder per velocity-dispersion bin (not included)
+spectra/stacks/          per-stack FITS files (stage 10), one folder per group (not included)
+chains/TMJ/              MCMC chains of stage 20, one folder per group (not included)
+chains/cosmographic/     MCMC chains of stage 30 (not included)
+stackstosinglegalaxies.fits  list of the DESI targets included in each baseline stack
 ```
 
-Every spectrum here comes from DESI, so `spectra/` has no separate `DESI/`
-level (see `spectra/README.md`).
+## Included third-party code and data
 
-## Vendored code
+The repository is self-contained: apart from the FastSpecFit catalogue and the
+spectra downloaded from SPARCL, no external code or data are needed.
 
-`aux/` and `pylick/` are real files in this repo, not symlinks to the
-author's personal astronomy library -- the pipeline runs standalone, no
-other repo needed (besides the raw catalog and whatever spectra/galaxies it
-downloads itself).
-
-Only the pieces this pipeline actually calls are vendored, copied verbatim
-from the author's personal library (a 37 MB library covering many unrelated
-analyses, referred to below as "the original library" -- not part of this
-repo):
-
-- `aux/corrections.py`, `aux/emcee_lick.py`, `aux/indices_singlegalaxies.py`
-  -- `C_toair`, `C_resol`, `C_VD`, `I_numberopen`/`I_typeopen`,
-  `measure_indices`, used by `desicc/lick_measurement.py`, `desicc/cvd.py`,
-  and `desicc/stacking.py`. In the original library these live under a package
-  called `MYLIBS`; only its internal absolute import
-  (`import MYLIBS.emcee_lick`, now `import aux.emcee_lick`) was changed to
-  match, everything else is untouched.
-- `aux/CVD/MILES/{C,dC}funs_MILESstars.npy` -- the velocity-dispersion
-  correction grids `desicc/cvd.py` looks up, precomputed on MILES stellar
-  templates.
-- `pylick/` (all of it) -- the index-measurement package
-  `indices_singlegalaxies.py` calls into.
-- `aux/tableall.dat`, `aux/plotbelli.style` -- the only two files pylick
-  actually opens (from `pylick/_config.py`'s `dir_lib = './aux/'`, resolved
-  relative to the process's current working directory, so `aux/` has to
-  live wherever you run `python3 pipeline/...` from -- normally the repo
-  root, same as here). In the original library these come from a separate
-  `libs/` data folder; `pylick/_config.py` and the hardcoded path in
-  `pylick/indices.py` were repointed at `aux/` to match.
-- `aux/mcmc_tmj.py` (`MCMC_one`, from `STACKING/MCMC2_MCMC.py`),
-  `aux/burnin.py` (`burnin`, from `STACKING/MCMC3_burnin_maker.py`),
-  `aux/posteriors.py` (`allmodalgkde`, from `MYLIBS/posteriors.py`) -- the
-  MCMC fit, burn-in cut, and posterior summary `desicc/tmj.py` and
-  `pipeline/20_SPSfitTMJ.py`/`21_posteriorsTMJ.py` use. Each file only keeps
-  the one function this pipeline calls (plus its direct dependencies) out of
-  several fit variants the original files defined; see the header comment in
-  each for exactly what was left out and why (mainly a `Z`/`[alpha/Fe]`-only
-  fit variant unused here, and, in `MCMC2_MCMC.py`'s case, ~1.4 GB of
-  module-level `np.load(...)` calls for a *different*, unused fit variant in
-  the same file).
-- `aux/TMJ/TMJ_MILES_custom250924b.npy`, `aux/TMJ/tabla/
-  TMJ_MILES_custom250924b_tabla.npy` -- the TMJ SSP model grid (age x
-  metallicity x `[alpha/Fe]` x Lick index) and its flattened lookup table,
-  precomputed on MILES stellar templates. Only this one grid is vendored --
-  it is the only one with full, consistent coverage in the historical
-  `TABLAS/modelled/` results (see Data & storage); other grid tags exist in
-  the original analysis but only cover one-off test combinations.
-- `aux/mcmc_cosmographic.py` (`MCMC_one`, from `ARTICLE3/aux13_MCMC.py`),
-  `aux/burnin_cosmographic.py` (`burnin`, from
-  `ARTICLE3/aux13_burnin_maker.py`), `aux/taylor_tz.py`/`aux/taylor_tz_wide.py`
-  (the narrow/wide-priors log-posteriors, from
-  `MYLIBS/TAYLOR_emcee_tz.py`/`TAYLOR_emcee_tz_widepriors.py`) -- the
-  cosmographic MCMC fit, burn-in cut, and Taylor-expansion model
-  `desicc/cosmographic.py`/`pipeline/30_cosmographic.py` use. The wide
-  variant isn't just wider priors -- its `C3` Taylor coefficient also
-  differs from the narrow variant's, an inconsistency present in the
-  original library and kept as-is (see the header comment in
-  `aux/taylor_tz_wide.py`).
-
-If you update from the author's original library, re-copy these same files
-into `aux/`/`pylick/` rather than re-symlinking the whole thing, to keep the
-repo self-contained.
+- `pylick/`: a copy of the pyLick package (Borghi et al. 2022) used to measure
+  the spectral indices. The only modification is that its auxiliary files
+  (`tableall.dat`, `plotbelli.style`) are read from `aux/`, relative to the
+  working directory, so the scripts must be run from the repository root.
+- `aux/corrections.py`, `aux/emcee_lick.py`, `aux/indices_singlegalaxies.py`:
+  air-wavelength conversion, resolution matching, velocity-dispersion
+  correction and index-measurement functions, used by
+  `desicc/lick_measurement.py`, `desicc/cvd.py` and `desicc/stacking.py`.
+- `aux/CVD/MILES/{C,dC}funs_MILESstars.npy`: velocity-dispersion correction
+  functions and their uncertainties, computed from MILES stellar spectra
+  (Appendix B of the paper).
+- `aux/TMJ/TMJ_MILES_custom250924b.npy` and
+  `aux/TMJ/tabla/TMJ_MILES_custom250924b_tabla.npy`: interpolated grid of TMJ
+  model predictions (age × metallicity × [α/Fe] × Lick index) and its lookup
+  table.
+- `aux/mcmc_tmj.py`, `aux/burnin.py`, `aux/posteriors.py`: MCMC fit, burn-in
+  removal and posterior summary of the TMJ fit.
+- `aux/mcmc_cosmographic.py`, `aux/burnin_cosmographic.py`,
+  `aux/taylor_tz.py`, `aux/taylor_tz_wide.py`: MCMC fit, burn-in removal and
+  log-posteriors (narrow and wide priors) of the cosmographic fit.
 
 ## Setup
 
-Python 3.11+, plus:
+Python 3.11 or later and the packages in `requirements.txt`:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-SPARCL credentials, for stages 01 and 03:
+Stages 01 and 03 require SPARCL credentials:
 
 ```bash
 export SPARCL_USER=...
 export SPARCL_PASS=...
 ```
 
-`aux/` and `pylick/` (see Vendored code above) ship with the repo, so no
-further setup is needed for those -- just run everything from the repo
-root, since `aux/` is read relative to the current working directory.
+Run all the scripts from the repository root, since `aux/` is read relative to
+the working directory.
 
-## Data & storage
+## Data
 
-This repo is meant to be a blueprint of the pipeline, not a data dump --
-what's tracked here is either code, or tables small and useful enough to
-read on their own. Deliberately *not* included:
+### Not included in this repository
 
-- **`tablasDESI/`** -- `RAW_CATALOG` in `desicc/config.py` points at the raw
-  fastspec-iron VAC (`tablasDESI/v2.1/fastspec-iron-main-dark.fits`), stage
-  00's input. It isn't distributed here: it's DESI's own data product,
-  already published in the official DESI data release, so duplicating it in
-  this repo would just be redundant. Only the empty `v2.1/`/`v3.0/`
-  directory skeleton is kept, to show where it goes.
-- **`TABLAS/PARENT/PARENT{0,1,2,3,4}.fits`** -- the actual output of every
-  catalog-to-spectra stage, real and complete (see below) -- but at
-  700MB-1.2GB each they exceed GitHub's hard 100MB-per-file push limit, so
-  they stay local-only rather than pulling in Git LFS for just these five
-  files. Regenerate them by running stages 00-04 (needs `tablasDESI/` and
-  SPARCL/spectra access, see Setup below).
-- **`spectra/singlegalaxies/vd<bin>/<targetid>.fits`** -- the
-  per-galaxy spectra and Lick measurements stage 03 writes. There's one file
-  per galaxy (order of 10^5-10^6 across all bins), which is both far too
-  much data and far too many files to track in git.
-- **`spectra/stacks/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/*.fits`** -- the
-  per-stack composite spectra stage 10 writes. Same reasoning: regenerable,
-  and there can be many per group.
-- **`chains/TMJ/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/*_burnin.txt`** -- stage
-  20's burned-in MCMC chains, one per stack. Same reasoning: regenerable,
-  and potentially large in aggregate (one full MCMC run each).
-- **`chains/cosmographic/*_burnin.txt`** -- stage 30's burned-in MCMC
-  chains. Same reasoning.
-- **`sparcl_ids_cache.fits`** -- stage 01's SPARCL query cache. Purely a
-  speed-up for re-runs, not informative on its own.
+- **FastSpecFit catalogue** (`tablasDESI/v2.1/fastspec-iron-main-dark.fits`,
+  the input of stage 00, set by `RAW_CATALOG` in `desicc/config.py`). It is a
+  public DESI DR1 data product and can be downloaded from
+  <https://data.desi.lbl.gov/public/dr1/vac/dr1/fastspecfit/iron/v2.1/catalogs/>.
+- **`PARENT0`–`PARENT4.fits`**, the outputs of stages 00–04 (0.7–1.2 GB each).
+  They exceed the GitHub file-size limit and are available on Zenodo:
+  [doi:10.5281/zenodo.21535100](https://doi.org/10.5281/zenodo.21535100).
+  To use them with the pipeline, place them in `TABLAS/PARENT/`.
+- **Per-galaxy spectra** (`spectra/singlegalaxies/`), per-stack spectra
+  (`spectra/stacks/`) and **MCMC chains** (`chains/`). They are too large or
+  too numerous to be tracked, and they can be regenerated with the pipeline;
+  only the folder structure is kept (see `spectra/README.md`). The individual
+  spectra are publicly available from DESI DR1 through SPARCL.
+- **SPARCL query cache** (`sparcl_ids_cache.fits`), which only speeds up
+  re-runs of stage 01.
 
-For `spectra/`, `chains/TMJ/` and `chains/cosmographic/`, only the directory
-skeleton is kept (see `spectra/README.md`), so it's clear where each stage
-puts its output; the files themselves are regenerated by running the
-pipeline.
+### Included in this repository
 
-What *is* included:
+- **`TABLAS/STACKed/`**: stack summary tables (stages 11–12) for all the
+  configurations explored in the paper: 6 velocity-dispersion bins × 3
+  age–σ relations × 2 cosmologies × 11 target S/N levels (50–150 in steps of
+  10), before and after the velocity-dispersion correction.
+- **`TABLAS/modelled/`**: TMJ posterior tables (stage 21) for the same
+  configurations, obtained with the `custom250924b` grid.
+- **`archaeology/limitesarchaeologyTMJ_<COSMOLOGY>_<ARCHAEOLOGY>.npy`**:
+  redshift limits of the archaeological coherence cut for each combination
+  of age–σ relation and cosmology, read by stage 10.
+- **`stackstosinglegalaxies.fits`**: a `STACKS` table with the name of each
+  stack (`vd<bin>_stack<NNNN>`), its number of galaxies (`ngals`) and the
+  DESI `targetid`s of the galaxies that compose it, for the 394 stacks of the
+  baseline configuration (S/N = 150, `ALVAREZ`, `PLANCK`) in the five groups
+  used in the cosmographic fit (200–355 km/s). Together with the `PARENT`
+  tables, it allows each stack to be traced back to its individual DESI
+  spectra.
 
-- Everything else in `TABLAS/`, i.e. `TABLAS/STACKed/` and
-  `TABLAS/modelled/` below -- the useful checkpoints small enough to check
-  in. Each one is a real, complete summary of the sample (or the stacks, or
-  the fits) at that point in the pipeline, readable directly (with
-  `astropy.table.Table.read`, TOPCAT, etc.) without re-running anything, and
-  together with the (locally-kept) PARENT tables they're the actual
-  scientific content this repo produces -- worth keeping even though the
-  repo otherwise avoids checking in data.
-- **`TABLAS/STACKed/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/stackedDESI_....fits`**
-  -- stage 11/12 stack summary tables, same idea as the PARENT tables but
-  for the stacks. This includes the full historical set of stacks from the
-  original ARTICLE3 analysis (all 6 in-range vd bins x 3 archaeologies x 2
-  cosmologies x 11 target-S/N values, raw and CVD-corrected), copied and
-  converted from ARTICLE3's `.ecsv` tables into this repo's METADATA+PYLICK
-  `.fits` convention -- not (re-)produced by running stages 10-12 in this
-  repo, since that would mean re-downloading and re-stacking the full sample.
-- **`TABLAS/modelled/vd<bin>/<ARCHAEOLOGY>/<COSMOLOGY>/posteriorsDESI_TMJ_....fits`**
-  -- stage 21 TMJ posteriors tables, same idea again but for the TMJ fit.
-  Includes the full historical `custom250924b` set (all 6 in-range vd bins x
-  3 archaeologies x 2 cosmologies x 11 target-S/N values), copied and
-  converted from ARTICLE3's `.ecsv` tables the same way as `TABLAS/STACKed/`
-  -- not (re-)produced by running stages 20-21 in this repo, since that
-  would mean re-running ~400 individual MCMC fits.
-- **`archaeology/limitesarchaeologyTMJ_<COSMOLOGY>_<ARCHAEOLOGY>.npy`** --
-  tiny (~1 KB each) precomputed lookups stage 10 needs to even select a
-  sample, not something regenerated by any stage in this repo.
-- **`stackstosinglegalaxies.fits`** -- a single `STACKS` HDU with `stack`
-  (`vd<bin>_stack<NNNN>`), `ngals`, and `targetids` (the variable-length
-  array of single-galaxy `targetid`s that went into that stack), for the
-  394 "baseline" stacks (SN150, PLANCK, ALVAREZ, the same configuration
-  used in the README's cosmographic cross-check) across the 5 vd groups
-  200225-320355. Built once from the real per-stack FITS files this
-  pipeline's stage 10 originally produced for that run
-  (`WRK/spectra/DESI/STACKS/onlyfinal/vd<bin>/`, outside this repo -- each
-  one's own METADATA already has a `targetids` column, a JSON-encoded list,
-  see `desicc/stacking.py`). Individual stack FITS files aren't tracked in
-  git (see `spectra/stacks/` above), and stage 11's summary table doesn't
-  carry `targetids` over from them, so this is the only place in the repo a
-  stack name can be traced back to the actual DESI targets it was built from.
-
-Every stage also takes `--input`/`--output` (or, for stage 03,
-`--parent`/`--spectra-root`/`--parent-final`; for stage 04, `--input`/
-`--output`; for stages 10-12 and 20-21, `--singlegalaxies-root`/
-`--stacks-root`/`--chains-root`/`--output`; for stage 30, `--chains-root`/
-`--name`, on top of `--vd-bin`/`--archaeology`/`--cosmology`/`--target-sn`,
-or `--vd-bins` for stage 30) flags if you'd rather keep the data somewhere
-else. Actually running the pipeline (downloading the raw catalog, querying
-SPARCL, fetching spectra) needs external services -- that part can't be
-made to run standalone -- but no other repo or library is required.
+All the tables can be read directly, e.g. with `astropy.table.Table.read` or
+TOPCAT.
