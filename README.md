@@ -178,7 +178,8 @@ the burn-in (`aux/burnin_cosmographic.py`), the chain is written to
 `chains/cosmographic/<name>_burnin.txt`, where `<name>` defaults to
 `cosmographicTMJ<grid>_vd<bins>_SN<sn>_<ARCHAEOLOGY>_<COSMOLOGY>_<priors>` and
 can be changed with `--name`. Existing chains are not overwritten unless
-`--overwrite` is given.
+`--overwrite` is given. Given the weight of the files, the baseline MCMC chain lives
+inside the HA26.zip compressed file.
 
 All stages also accept options to read from and write to custom locations
 (`--input`/`--output` for most stages; `--parent`, `--spectra-root` and
